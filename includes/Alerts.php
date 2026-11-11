@@ -59,10 +59,10 @@ final class Alerts {
 	public static function update( $enabled, $recipients ) {
 		$list = self::parse_recipients( (string) $recipients );
 		if ( ! is_bool( $enabled ) ) {
-			return new \WP_Error( 'wpecir_pro_invalid', __( 'Choose whether alerts are on or off.', 'checkout-impact-regression-pro' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'wpecir_pro_invalid', __( 'Choose whether alerts are on or off.', 'checkout-impact-regression-pro-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 		if ( $enabled && ! $list ) {
-			return new \WP_Error( 'wpecir_pro_invalid_recipients', __( 'Enter at least one valid email address.', 'checkout-impact-regression-pro' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'wpecir_pro_invalid_recipients', __( 'Enter at least one valid email address.', 'checkout-impact-regression-pro-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 		update_option( self::OPTION, array( 'enabled' => $enabled, 'recipients' => implode( ', ', $list ) ), false );
 		return self::settings();
@@ -140,14 +140,14 @@ final class Alerts {
 		$lines = array();
 		foreach ( $rows as $row ) {
 			$what    = '' !== $row['object_label'] ? $row['object_label'] : $row['object_type'];
-			$kind    = 'plugin_update' === $row['source'] ? __( 'Plugin updated', 'checkout-impact-regression-pro' ) : __( 'Setting changed', 'checkout-impact-regression-pro' );
+			$kind    = 'plugin_update' === $row['source'] ? __( 'Plugin updated', 'checkout-impact-regression-pro-for-woocommerce' ) : __( 'Setting changed', 'checkout-impact-regression-pro-for-woocommerce' );
 			$lines[] = '- ' . $kind . ': ' . $what . ' (' . $row['occurred_at'] . ' UTC)';
 		}
 		$link = admin_url( 'admin.php?page=wpessential-checkout-impact#compare' );
 		/* translators: %s: site name. */
-		$subject = sprintf( __( '[%s] Checkout-related change recorded — compare your scenarios', 'checkout-impact-regression-pro' ), wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES ) );
-		$body    = __( 'Checkout Impact recorded these changes on your store:', 'checkout-impact-regression-pro' ) . "\n\n" . implode( "\n", $lines ) . "\n\n" .
-			__( 'Open checkout for your saved scenarios, record what you see and compare it with the approved baseline:', 'checkout-impact-regression-pro' ) . "\n" . $link . "\n";
+		$subject = sprintf( __( '[%s] Checkout-related change recorded — compare your scenarios', 'checkout-impact-regression-pro-for-woocommerce' ), wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES ) );
+		$body    = __( 'Checkout Impact recorded these changes on your store:', 'checkout-impact-regression-pro-for-woocommerce' ) . "\n\n" . implode( "\n", $lines ) . "\n\n" .
+			__( 'Open checkout for your saved scenarios, record what you see and compare it with the approved baseline:', 'checkout-impact-regression-pro-for-woocommerce' ) . "\n" . $link . "\n";
 
 		if ( ! wp_mail( $to, $subject, $body ) ) {
 			return self::retry_later();
