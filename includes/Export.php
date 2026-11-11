@@ -17,6 +17,9 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Builds export files from the free plugin's report API.
  */
 final class Export {
+	const PAGE        = 20;
+	const MAX_REPORTS = 2000;
+
 	/**
 	 * Export one scenario's unexpired reports.
 	 *
@@ -29,9 +32,16 @@ final class Export {
 		if ( is_wp_error( $scenario ) ) {
 			return $scenario;
 		}
-		$reports = $repository->list_manual_comparisons( $scenario['id'], 20 );
-		if ( is_wp_error( $reports ) ) {
-			return $reports;
+		$reports = array();
+		for ( $offset = 0; $offset < self::MAX_REPORTS; $offset += self::PAGE ) {
+			$page = $repository->list_manual_comparisons( $scenario['id'], self::PAGE, $offset );
+			if ( is_wp_error( $page ) ) {
+				return $page;
+			}
+			$reports = array_merge( $reports, $page );
+			if ( count( $page ) < self::PAGE ) {
+				break;
+			}
 		}
 
 		$format   = 'json' === $request->get_param( 'format' ) ? 'json' : 'csv';

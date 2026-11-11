@@ -49,14 +49,23 @@
 		const [ recipients, setRecipients ] = useState( '' );
 		const [ busy, setBusy ] = useState( true );
 		const [ message, setMessage ] = useState( null );
+		const [ loaded, setLoaded ] = useState( false );
+		const [ lastFailure, setLastFailure ] = useState( '' );
 		useEffect( function () {
 			wp.apiFetch( { path: API + '/alerts' } ).then( function ( settings ) {
 				setEnabled( Boolean( settings.enabled ) );
 				setRecipients( settings.recipients || '' );
+				setLastFailure( settings.last_failure || '' );
+				setLoaded( true );
+			} ).catch( function ( error ) {
+				setMessage( { tone: 'error', text: error.message || __( 'Could not load alert settings. Reload the page before changing them.', 'checkout-impact-regression-pro' ) } );
 			} ).finally( function () { setBusy( false ); } );
 		}, [] );
 		const save = function ( event ) {
 			event.preventDefault();
+			if ( ! loaded ) {
+				return;
+			}
 			setBusy( true );
 			setMessage( null );
 			wp.apiFetch( { path: API + '/alerts', method: 'POST', data: { enabled: enabled, recipients: recipients } } )
@@ -70,6 +79,7 @@
 				h( 'h2', { id: 'wpecir-pro-alerts-title', className: 'wpecir-card__title' }, __( 'Change alerts', 'checkout-impact-regression-pro' ) ),
 				h( 'p', { className: 'wpecir-card__description' }, __( 'Get one email when a plugin is updated or a payment or shipping setting changes, so you know when to compare your scenarios. Changes within 15 minutes are grouped into one email.', 'checkout-impact-regression-pro' ) )
 			) ),
+			lastFailure ? h( 'div', { className: 'wpecir-notice wpecir-notice--warning', role: 'status' }, h( 'p', null, __( 'The last alert email could not be sent after 3 tries (UTC):', 'checkout-impact-regression-pro' ) + ' ' + lastFailure + '. ' + __( 'Check that your site can send email.', 'checkout-impact-regression-pro' ) ) ) : null,
 			message ? h( 'div', { className: 'wpecir-notice wpecir-notice--' + message.tone, role: message.tone === 'error' ? 'alert' : 'status' }, h( 'p', null, message.text ) ) : null,
 			h( 'form', { className: 'wpecir-form wpecir-form--narrow', onSubmit: save },
 				h( 'label', { className: 'wpecir-check' },
@@ -81,7 +91,7 @@
 					h( 'input', { id: 'wpecir-pro-recipients', type: 'text', value: recipients, onChange: function ( event ) { setRecipients( event.target.value ); }, 'aria-describedby': 'wpecir-pro-recipients-help' } ),
 					h( 'p', { id: 'wpecir-pro-recipients-help', className: 'wpecir-help' }, __( 'Up to 5 addresses, separated by commas.', 'checkout-impact-regression-pro' ) )
 				),
-				h( 'div', { className: 'wpecir-form-actions' }, h( 'button', { type: 'submit', className: 'button button-primary', disabled: busy }, busy ? __( 'Saving…', 'checkout-impact-regression-pro' ) : __( 'Save alert settings', 'checkout-impact-regression-pro' ) ) )
+				h( 'div', { className: 'wpecir-form-actions' }, h( 'button', { type: 'submit', className: 'button button-primary', disabled: busy || ! loaded }, busy ? __( 'Saving…', 'checkout-impact-regression-pro' ) : __( 'Save alert settings', 'checkout-impact-regression-pro' ) ) )
 			)
 		);
 	}

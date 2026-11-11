@@ -20,6 +20,9 @@ final class Alerts {
 	const HOOK         = 'wpecir_pro_send_alert_digest';
 	const DELAY        = 900; // 15 minutes: an update run often records several events.
 	const MAX_QUEUE    = 50;
+	const MAX_ATTEMPTS = 3;
+	const ATTEMPTS_OPTION   = 'wpecir_pro_alert_attempts';
+	const LAST_ERROR_OPTION = 'wpecir_pro_alert_last_failure';
 
 	/**
 	 * Register hooks.
@@ -40,8 +43,9 @@ final class Alerts {
 		$saved = get_option( self::OPTION, array() );
 		$saved = is_array( $saved ) ? $saved : array();
 		return array(
-			'enabled'    => ! empty( $saved['enabled'] ),
-			'recipients' => isset( $saved['recipients'] ) ? (string) $saved['recipients'] : (string) get_option( 'admin_email' ),
+			'enabled'      => ! empty( $saved['enabled'] ),
+			'recipients'   => isset( $saved['recipients'] ) ? (string) $saved['recipients'] : (string) get_option( 'admin_email' ),
+			'last_failure' => (string) get_option( self::LAST_ERROR_OPTION, '' ),
 		);
 	}
 
@@ -109,21 +113,27 @@ final class Alerts {
 	 * @return bool Whether an email was sent.
 	 */
 	public static function send_digest() {
-		$queue = get_option( self::QUEUE_OPTION, array() );
-		delete_option( self::QUEUE_OPTION );
+		$queue    = get_option( self::QUEUE_OPTION, array() );
+		$queue    = is_array( $queue ) ? array_values( array_unique( array_map( 'absint', $queue ) ) ) : array();
 		$settings = self::settings();
 		$to       = self::parse_recipients( $settings['recipients'] );
-		if ( ! $settings['enabled'] || ! $to || ! is_array( $queue ) || ! $queue ) {
+		if ( ! $settings['enabled'] || ! $to || ! $queue ) {
+			delete_option( self::QUEUE_OPTION );
+			delete_option( self::ATTEMPTS_OPTION );
 			return false;
 		}
 
 		global $wpdb;
-		$ids    = array_map( 'absint', $queue );
+		$ids    = $queue;
 		$table  = $wpdb->prefix . 'wpecir_change_events';
 		$holder = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- placeholders are generated from the ID count.
 		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT source, object_type, object_label, occurred_at FROM %i WHERE id IN ({$holder}) ORDER BY occurred_at ASC", array_merge( array( $table ), $ids ) ), ARRAY_A );
+		if ( null === $rows || '' !== $wpdb->last_error ) {
+			return self::retry_later();
+		}
 		if ( ! $rows ) {
+			self::forget( $ids );
 			return false;
 		}
 
@@ -139,7 +149,51 @@ final class Alerts {
 		$body    = __( 'Checkout Impact recorded these changes on your store:', 'checkout-impact-regression-pro' ) . "\n\n" . implode( "\n", $lines ) . "\n\n" .
 			__( 'Open checkout for your saved scenarios, record what you see and compare it with the approved baseline:', 'checkout-impact-regression-pro' ) . "\n" . $link . "\n";
 
-		return (bool) wp_mail( $to, $subject, $body );
+		if ( ! wp_mail( $to, $subject, $body ) ) {
+			return self::retry_later();
+		}
+		self::forget( $ids );
+		return true;
+	}
+
+	/**
+	 * Remove delivered IDs, keeping any that were queued while sending.
+	 *
+	 * @param int[] $sent Delivered event IDs.
+	 * @return void
+	 */
+	private static function forget( $sent ) {
+		$queue = get_option( self::QUEUE_OPTION, array() );
+		$left  = array_values( array_diff( is_array( $queue ) ? array_map( 'absint', $queue ) : array(), $sent ) );
+		delete_option( self::ATTEMPTS_OPTION );
+		delete_option( self::LAST_ERROR_OPTION );
+		if ( $left ) {
+			update_option( self::QUEUE_OPTION, $left, false );
+			if ( ! wp_next_scheduled( self::HOOK ) ) {
+				wp_schedule_single_event( time() + self::DELAY, self::HOOK );
+			}
+			return;
+		}
+		delete_option( self::QUEUE_OPTION );
+	}
+
+	/**
+	 * Keep the queue and try again later, up to MAX_ATTEMPTS times.
+	 *
+	 * @return bool Always false (nothing was sent).
+	 */
+	private static function retry_later() {
+		$attempts = absint( get_option( self::ATTEMPTS_OPTION, 0 ) ) + 1;
+		if ( $attempts >= self::MAX_ATTEMPTS ) {
+			delete_option( self::ATTEMPTS_OPTION );
+			update_option( self::LAST_ERROR_OPTION, gmdate( 'Y-m-d H:i:s' ), false );
+			return false;
+		}
+		update_option( self::ATTEMPTS_OPTION, $attempts, false );
+		if ( ! wp_next_scheduled( self::HOOK ) ) {
+			wp_schedule_single_event( time() + self::DELAY * $attempts, self::HOOK );
+		}
+		return false;
 	}
 
 	/**

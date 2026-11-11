@@ -11,4 +11,6 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 
 delete_option( 'wpecir_pro_alerts' );
 delete_option( 'wpecir_pro_alert_queue' );
+delete_option( 'wpecir_pro_alert_attempts' );
+delete_option( 'wpecir_pro_alert_last_failure' );
 wp_clear_scheduled_hook( 'wpecir_pro_send_alert_digest' );

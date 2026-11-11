@@ -23,7 +23,8 @@ final class Plugin {
 	 * @return void
 	 */
 	public static function boot() {
-		if ( ! defined( 'WPECIR_VERSION' ) ) {
+		// wpecir_loaded fires only after the free plugin loaded its classes.
+		if ( ! did_action( 'wpecir_loaded' ) || ! class_exists( \WPEssential\CheckoutImpactRegression\Storage\Repository::class ) ) {
 			add_action( 'admin_notices', array( __CLASS__, 'missing_free_notice' ) );
 			return;
 		}
