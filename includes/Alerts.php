@@ -121,8 +121,8 @@ final class Alerts {
 		$ids    = array_map( 'absint', $queue );
 		$table  = $wpdb->prefix . 'wpecir_change_events';
 		$holder = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
-		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- table name is internal; placeholders built from the ID count.
-		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT source, object_type, object_label, occurred_at FROM {$table} WHERE id IN ({$holder}) ORDER BY occurred_at ASC", $ids ), ARRAY_A );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- placeholders are generated from the ID count.
+		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT source, object_type, object_label, occurred_at FROM %i WHERE id IN ({$holder}) ORDER BY occurred_at ASC", array_merge( array( $table ), $ids ) ), ARRAY_A );
 		if ( ! $rows ) {
 			return false;
 		}

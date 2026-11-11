@@ -121,7 +121,7 @@ final class Plugin {
 		}
 		$path = WPECIR_PRO_PATH . 'assets/pro.js';
 		wp_enqueue_script( 'wpecir-pro', WPECIR_PRO_URL . 'assets/pro.js', array( 'wp-element', 'wp-i18n', 'wp-api-fetch', 'wp-hooks' ), is_readable( $path ) ? (string) filemtime( $path ) : WPECIR_PRO_VERSION, true );
-		wp_set_script_translations( 'wpecir-pro', 'checkout-impact-regression-pro', WPECIR_PRO_PATH . 'languages' );
+		wp_set_script_translations( 'wpecir-pro', 'checkout-impact-regression-pro' );
 		// The free app must render after Pro has registered its filters.
 		$free = wp_scripts()->query( 'wpecir-admin' );
 		if ( $free && ! in_array( 'wpecir-pro', $free->deps, true ) ) {
