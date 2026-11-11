@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name:          Checkout Impact Regression Pro for WooCommerce
- * Plugin URI:           https://wpessential.org/plugins/checkout-impact-regression-pro
+ * Plugin URI:           https://wpessential.org/plugins/checkout-impact-regression-pro-for-woocommerce
  * Description:          Adds change alerts by email and CSV/JSON report export to Checkout Impact Regression for WooCommerce.
  * Version:              1.0.0
  * Requires at least:    6.9
@@ -11,7 +11,7 @@
  * Author URI:           https://wpessential.org
  * License:              GPL-2.0-or-later
  * License URI:          https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain:          checkout-impact-regression-pro
+ * Text Domain:          checkout-impact-regression-pro-for-woocommerce
  * WC requires at least: 10.8
  * WC tested up to:      11.2
  *
@@ -26,6 +26,8 @@ define( 'WPECIR_PRO_VERSION', '1.0.0' );
 define( 'WPECIR_PRO_FILE', __FILE__ );
 define( 'WPECIR_PRO_PATH', plugin_dir_path( __FILE__ ) );
 define( 'WPECIR_PRO_URL', plugin_dir_url( __FILE__ ) );
+// Lowest free-plugin version whose public hooks and REST API this release uses.
+define( 'WPECIR_PRO_MIN_FREE_VERSION', '1.0.0' );
 
 require_once WPECIR_PRO_PATH . 'includes/Alerts.php';
 require_once WPECIR_PRO_PATH . 'includes/Export.php';

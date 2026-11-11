@@ -1,5 +1,6 @@
 === Checkout Impact Regression Pro for WooCommerce ===
 Contributors: wpessential
+Tags: woocommerce, checkout, alerts, export, regression testing
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 8.2
@@ -18,6 +19,18 @@ Adds two features to the free Checkout Impact Regression for WooCommerce plugin:
 * **Report export** – download saved comparison reports as CSV or JSON.
 
 Settings: WooCommerce → Checkout Impact → Alerts. Export: Reports tab.
+
+**Requires the free plugin.** Install and activate [Checkout Impact Regression for WooCommerce](https://wordpress.org/plugins/checkout-impact-regression-for-woocommerce/) first. WordPress will not activate Pro without it, and Pro checks the free plugin's version before it loads.
+
+== External services ==
+
+Pro does not connect to any external service. Alert emails are sent with your site's own `wp_mail()` setup to the addresses you enter.
+
+== Installation ==
+
+1. Install and activate WooCommerce and Checkout Impact Regression for WooCommerce.
+2. Upload the Pro ZIP under Plugins → Add New → Upload Plugin and activate it.
+3. Open WooCommerce → Checkout Impact → Alerts.
 
 == Changelog ==
 

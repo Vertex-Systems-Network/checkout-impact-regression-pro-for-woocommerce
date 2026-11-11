@@ -1,0 +1,10 @@
+{
+  "$schema": "https://playground.wordpress.net/blueprint-schema.json",
+  "login": true,
+  "steps": [
+    { "step": "installPlugin", "pluginData": { "resource": "wordpress.org/plugins", "slug": "woocommerce" }, "options": { "activate": true } },
+    { "step": "activatePlugin", "pluginPath": "checkout-impact-regression-for-woocommerce/checkout-impact-regression-for-woocommerce.php" },
+    { "step": "activatePlugin", "pluginPath": "checkout-impact-regression-pro-for-woocommerce/checkout-impact-regression-pro-for-woocommerce.php" },
+    { "step": "runPHP", "code": "<?php require '/integration/check.php';" }
+  ]
+}
