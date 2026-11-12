@@ -23,12 +23,14 @@ ARGS=(--php="$PHP_VERSION" --blueprint="$BLUEPRINT"
 	--mount="$HERE:/integration")
 if [ -n "${PLAYGROUND_WP_DIR:-}" ]; then ARGS+=(--auto-mount="$PLAYGROUND_WP_DIR"); fi
 rm -f "$HERE/result.txt"
-CLI="${PLAYGROUND_CLI:-npx --yes @wp-playground/cli@latest}"
+# Pinned on purpose; bump deliberately after checking the Playground changelog.
+PLAYGROUND_CLI_VERSION=3.1.64
+CLI="${PLAYGROUND_CLI:-npx --yes @wp-playground/cli@${PLAYGROUND_CLI_VERSION}}"
 set +e
 OUT=$($CLI run-blueprint "${ARGS[@]}" 2>&1); STATUS=$?
 set -e
 if [ -f "$HERE/result.txt" ]; then cat "$HERE/result.txt"; fi
-if ! grep -q "INTEGRATION OK" "$HERE/result.txt" 2>/dev/null; then
+if [ "$STATUS" -ne 0 ] || ! grep -q "INTEGRATION OK" "$HERE/result.txt" 2>/dev/null; then
 	echo "$OUT" | grep -v EBADENGINE | tail -30
 	echo "Integration check did not complete (playground exit $STATUS)"
 	exit 1

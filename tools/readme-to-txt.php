@@ -9,7 +9,7 @@ declare(strict_types=1);
  *
  *   php tools/readme-to-txt.php           write readme.txt at the repository root
  *   php tools/readme-to-txt.php --check   exit 1 when readme.txt is out of date
- *   php tools/readme-to-txt.php --out=X   write the result to X (used by bin/build.sh)
+ *   php tools/readme-to-txt.php --out=X   write the result to X instead of readme.txt
  *
  * Mapping: "# Name" -> "=== Name ===", "## Section" -> "== Section ==", "### Title" -> "= Title =",
  * "**Header:** value" lines (ending in a "\\" Markdown line break) -> "Header: value", "- item" -> "* item".
@@ -82,7 +82,7 @@ function wpeAssertReadmeTxtRules(string $txt, string $pluginVersion): void
     // The short description is the paragraph directly after the header block, before any section.
     $blocks = explode("\n\n", $txt, 3);
     $summary = trim($blocks[1] ?? '');
-    if ($summary === '' || str_starts_with($summary, '=') || str_contains($summary, "\n") || mb_strlen($summary, 'UTF-8') > 150) {
+    if ($summary === '' || str_starts_with($summary, '=') || str_contains($summary, "\n") || (function_exists('mb_strlen') ? mb_strlen($summary, 'UTF-8') : preg_match_all('/./us', $summary)) > 150) {
         throw new RuntimeException('The short description must follow the header and be one line of at most 150 characters.');
     }
     foreach (['== Description ==', '== Installation ==', '== Changelog ==', '== External services =='] as $section) {

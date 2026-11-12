@@ -1,8 +1,12 @@
 name: CI, free compatibility and packages
 
 # Pro only works with the free plugin, so every run tests Pro against the free
-# plugin (same-named branch if it exists, otherwise main), runs both together in
-# WordPress Playground and builds both ZIPs into one artifact.
+# plugin (same-named branch if it exists, otherwise main, pinned to the resolved
+# commit), runs both together in WordPress Playground and builds both ZIPs.
+#
+# Pro is paid: keep this repository PRIVATE so only people with access (the
+# owner/admins) can download its artifacts. Anyone with read access can download
+# artifacts, so grant access to admins only. Artifacts expire after 7 days.
 
 on:
   push:
@@ -29,7 +33,7 @@ jobs:
       matrix:
         php: ['8.2', '8.3', '8.4']
     outputs:
-      free_ref: ${{ steps.ref.outputs.ref }}
+      free_sha: ${{ steps.ref.outputs.sha }}
     steps:
       - uses: actions/checkout@v4
       - id: ref
@@ -37,14 +41,14 @@ jobs:
         shell: bash
         run: |
           branch="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
-          ref=main
-          if [ -n "$branch" ] && git ls-remote --exit-code --heads "https://github.com/$FREE_REPO" "$branch" >/dev/null 2>&1; then ref="$branch"; fi
-          echo "ref=$ref" >> "$GITHUB_OUTPUT"
-          echo "Testing against $FREE_REPO@$ref" >> "$GITHUB_STEP_SUMMARY"
+          sha=$(git ls-remote "https://github.com/$FREE_REPO" "refs/heads/$branch" | cut -f1)
+          [ -n "$sha" ] || sha=$(git ls-remote "https://github.com/$FREE_REPO" refs/heads/main | cut -f1)
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "Testing against $FREE_REPO@$sha" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/checkout@v4
         with:
           repository: ${{ env.FREE_REPO }}
-          ref: ${{ steps.ref.outputs.ref }}
+          ref: ${{ steps.ref.outputs.sha }}
           path: free-repo
       - uses: shivammathur/setup-php@v2
         with:
@@ -67,11 +71,21 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
+      - id: vis
+        name: Only private repositories may publish Pro artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          visibility=$(gh api "repos/$GITHUB_REPOSITORY" --jq .visibility)
+          echo "visibility=$visibility" >> "$GITHUB_OUTPUT"
+          if [ "$visibility" != "private" ]; then
+            echo "::warning::This repository is $visibility, so the Pro ZIP is built and checked but NOT uploaded. Make the repository private to get downloadable packages (admins only, D-025)."
+          fi
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
         with:
           repository: ${{ env.FREE_REPO }}
-          ref: ${{ needs.test.outputs.free_ref }}
+          ref: ${{ needs.test.outputs.free_sha }}
           path: free-repo
       - uses: shivammathur/setup-php@v2
         with:
@@ -80,7 +94,8 @@ jobs:
           coverage: none
       - name: Build both packages
         run: FREE_DIR=free-repo ./bin/build.sh
-      - name: Upload Pro + free packages
+      - name: Upload Pro + free packages (private repository only)
+        if: steps.vis.outputs.visibility == 'private'
         uses: actions/upload-artifact@v4
         with:
           name: plugin-packages
@@ -88,35 +103,35 @@ jobs:
             dist/*.zip
             dist/*.sha256
           if-no-files-found: error
-      - name: Keep unpacked builds for the integration run
-        uses: actions/upload-artifact@v4
-        with:
-          name: unpacked-builds
-          path: |
-            build/checkout-impact-regression-pro-for-woocommerce
-            free-repo/build/checkout-impact-regression-for-woocommerce
-            tests/integration
+          retention-days: 7
 
   integration:
     name: Pro + free together in WordPress Playground (PHP ${{ matrix.php }})
-    needs: package
+    needs: test
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         php: ['8.2', '8.4']
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          name: unpacked-builds
-          path: unpacked
+          repository: ${{ env.FREE_REPO }}
+          ref: ${{ needs.test.outputs.free_sha }}
+          path: free-repo
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+          coverage: none
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Run integration check (latest WordPress + WooCommerce)
+      - name: Build both in this job (nothing is uploaded) and run the integration check
         run: |
-          chmod +x unpacked/tests/integration/run.sh
-          unpacked/tests/integration/run.sh unpacked/free-repo/build/checkout-impact-regression-for-woocommerce unpacked/build/checkout-impact-regression-pro-for-woocommerce ${{ matrix.php }}
+          FREE_DIR=free-repo ./bin/build.sh >/dev/null
+          tests/integration/run.sh free-repo/build/checkout-impact-regression-for-woocommerce build/checkout-impact-regression-pro-for-woocommerce ${{ matrix.php }}
 
   notify-free:
     name: Ask the free repository to re-test

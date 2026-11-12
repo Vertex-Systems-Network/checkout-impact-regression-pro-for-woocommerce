@@ -56,18 +56,49 @@ $response = rest_do_request( $request );
 $check( 200 === $response->get_status(), 'free REST creates a scenario' );
 $scenario_id = (int) $response->get_data()['id'];
 
+$observed = static function ( $cost ) {
+	return array(
+		'shipping.method' => array( 'state' => 'observed', 'value' => 'flat_rate:1' ),
+		'shipping.cost'   => array( 'state' => 'observed', 'value' => $cost ),
+		'coupon.code'     => array( 'state' => 'missing' ),
+		'coupon.discount' => array( 'state' => 'missing' ),
+		'payment.methods' => array( 'state' => 'observed', 'value' => 'bacs' ),
+	);
+};
+$save = new WP_REST_Request( 'POST', '/wpecir/v1/comparisons' );
+$save->set_body_params( array( 'scenario_id' => $scenario_id, 'before' => $observed( '4.90' ), 'after' => $observed( '12.50' ) ) );
+$saved = rest_do_request( $save );
+$check( 200 === $saved->get_status() && ! empty( $saved->get_data()['report']['id'] ), 'free REST saves a comparison report' );
+$report_id = (int) $saved->get_data()['report']['id'];
+
 $export = new WP_REST_Request( 'GET', '/wpecir-pro/v1/scenarios/' . $scenario_id . '/export' );
 $export->set_param( 'format', 'csv' );
 $export_response = rest_do_request( $export );
-$check( 200 === $export_response->get_status() && 0 === strpos( $export_response->get_data()['content'], '"report_id"' ), 'Pro exports through the free repository' );
+$csv             = 200 === $export_response->get_status() ? (string) $export_response->get_data()['content'] : '';
+$check( 1 === (int) $export_response->get_data()['count'] && 0 === strpos( $csv, '"report_id"' ), 'Pro export returns the saved report' );
+$check( false !== strpos( $csv, '"' . $report_id . '",' ) && false !== strpos( $csv, '"shipping_cost","EUR 4.9","EUR 12.5","changed"' ), 'exported CSV contains the report\'s before/after values and result' );
 
-\WPEssential\CheckoutImpactRegressionPro\Alerts::update( true, 'ops@example.test' );
+\WPEssential\CheckoutImpactRegressionPro\Alerts::update( true, 'ops@example.test, qa@example.test' );
 delete_option( \WPEssential\CheckoutImpactRegressionPro\Alerts::QUEUE_OPTION );
-update_option( 'woocommerce_cod_settings', array( 'enabled' => 'yes', 'title' => 'COD ' . wp_rand() ) );
+$secret_title = 'COD secret ' . wp_rand();
+update_option( 'woocommerce_cod_settings', array( 'enabled' => 'yes', 'title' => $secret_title ) );
 $queue = get_option( \WPEssential\CheckoutImpactRegressionPro\Alerts::QUEUE_OPTION );
 $check( is_array( $queue ) && count( $queue ) >= 1, 'a free change event reaches the Pro alert queue' );
-add_filter( 'pre_wp_mail', '__return_true' );
+$mail = null;
+add_filter(
+	'pre_wp_mail',
+	static function ( $short, $atts ) use ( &$mail ) {
+		$mail = $atts;
+		return true; // Capture instead of sending.
+	},
+	10,
+	2
+);
 $check( true === \WPEssential\CheckoutImpactRegressionPro\Alerts::send_digest(), 'Pro sends the digest for free events' );
+$check( is_array( $mail ) && array( 'ops@example.test', 'qa@example.test' ) === array_values( (array) $mail['to'] ), 'digest goes to exactly the configured recipients' );
+$check( false !== strpos( (string) $mail['message'], 'woocommerce_cod_settings' ) && false !== strpos( (string) $mail['message'], 'page=wpessential-checkout-impact' ), 'digest names the changed setting and links to the free screen' );
+$check( false === strpos( (string) $mail['message'], $secret_title ), 'digest does not include setting values' );
+$check( ! get_option( \WPEssential\CheckoutImpactRegressionPro\Alerts::QUEUE_OPTION ), 'sent events are removed from the queue' );
 
 wp_set_current_user( 0 );
 $check( in_array( rest_do_request( new WP_REST_Request( 'GET', '/wpecir-pro/v1/alerts' ) )->get_status(), array( 401, 403 ), true ), 'Pro REST is closed to anonymous users' );
