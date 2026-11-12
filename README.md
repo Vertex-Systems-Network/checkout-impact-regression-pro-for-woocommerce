@@ -30,7 +30,9 @@ Both repositories run the same checks against each other on every push, pull req
 
 If both repositories have a branch with the same name, CI tests those branches together – use that for changes that touch both plugins. **Keep this repository private.** While it is public, CI still builds and checks the Pro ZIP but does not upload it.
 
-Optional: add a `CROSS_REPO_TOKEN` secret (fine-grained token with *Contents: read & write* on both repos) to make a push to `main` in one repo immediately re-run CI in the other.
+**Runner minutes:** while this repository is private, its CI does not start automatically (private repos use paid minutes). Use **Actions → Run workflow** when you need a run, or build locally with `FREE_DIR=../checkout-impact-regression-for-woocommerce ./bin/build.sh`. On a private repository the automatic runs show as **skipped** – that is not a pass. Verify a Pro pull request for free in the public free repository: push a same-named branch there and open a PR, or use **Actions → CI → Run workflow** there with `pro_ref` set to your Pro branch. That run checks the compatibility contract, Pro's tests and the Playground integration. The free repository also tests Pro `main` every night.
+
+Optional: a `CROSS_REPO_TOKEN` secret here (fine-grained, *Contents: read & write* on the free repo) makes a Pro run on `main` (a push while public, or a manual run) re-run the free repository's CI.
 
 ## Development
 
