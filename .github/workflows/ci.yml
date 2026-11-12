@@ -29,6 +29,8 @@ jobs:
   test:
     name: Lint, Pro tests and free compatibility (PHP ${{ matrix.php }})
     # Automatic only while the repository is public; when private, run it by hand.
+    # A skipped run on a private repo is NOT a pass: verify Pro pull requests through
+    # the public free repository's CI (same-named branch or the pro_ref input).
     if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     strategy:
@@ -139,7 +141,7 @@ jobs:
   notify-free:
     name: Ask the free repository to re-test
     needs: [package, integration]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Dispatch pro-updated to free (needs CROSS_REPO_TOKEN secret)
