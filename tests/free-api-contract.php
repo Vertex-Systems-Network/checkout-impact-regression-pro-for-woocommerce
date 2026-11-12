@@ -68,7 +68,10 @@ if ( class_exists( $class ) ) {
 }
 
 // Database columns Pro queries directly.
-api_check( false !== strpos( $schema, "'change_events'     => \$base . 'change_events'" ) || false !== strpos( $schema, "change_events" ), 'free has the change_events table' );
+// Pro queries $wpdb->prefix . 'wpecir_change_events' directly (includes/Alerts.php).
+$alerts = $read( $pro . '/includes/Alerts.php' );
+api_check( false !== strpos( $schema, "\$base = \$prefix . 'wpecir_';" ) && 1 === preg_match( "/'change_events'\s*=>\s*\\\$base \. 'change_events'/", $schema ), 'free names the table {prefix}wpecir_change_events' );
+api_check( false !== strpos( $alerts, "\$wpdb->prefix . 'wpecir_change_events'" ), 'Pro reads {prefix}wpecir_change_events' );
 foreach ( array( 'source', 'object_type', 'object_label', 'occurred_at' ) as $column ) {
 	api_check( 1 === preg_match( '/\b' . $column . '\b[^\n]*NOT NULL/', $schema ), "change_events has column {$column}" );
 }
