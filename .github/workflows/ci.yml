@@ -7,16 +7,17 @@ name: CI, free compatibility and packages
 # Pro is paid: keep this repository PRIVATE so only people with access (the
 # owner/admins) can download its artifacts. Anyone with read access can download
 # artifacts, so grant access to admins only. Artifacts expire after 7 days.
+#
+# Runner minutes: while this repository is private, nothing runs automatically
+# (private repos use paid minutes). Start a run by hand with "Run workflow", or
+# build locally with ./bin/build.sh. Free <-> Pro compatibility is still tested
+# on every free-repository run and nightly there (public repo, no paid minutes).
 
 on:
   push:
     branches: [main]
   pull_request:
   workflow_dispatch:
-  repository_dispatch:
-    types: [free-updated]
-  schedule:
-    - cron: '47 2 * * *'
 
 permissions:
   contents: read
@@ -27,6 +28,8 @@ env:
 jobs:
   test:
     name: Lint, Pro tests and free compatibility (PHP ${{ matrix.php }})
+    # Automatic only while the repository is public; when private, run it by hand.
+    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -143,7 +146,7 @@ jobs:
         env:
           TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
         run: |
-          if [ -z "$TOKEN" ]; then echo "CROSS_REPO_TOKEN not set; free re-tests on its nightly schedule instead." >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          if [ -z "$TOKEN" ]; then echo "CROSS_REPO_TOKEN not set; free re-tests on its own nightly schedule instead." >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
           curl -fsS -X POST -H "Authorization: Bearer $TOKEN" -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/$FREE_REPO/dispatches" \
             -d "{\"event_type\":\"pro-updated\",\"client_payload\":{\"sha\":\"$GITHUB_SHA\"}}"
