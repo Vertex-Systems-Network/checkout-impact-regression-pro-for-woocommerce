@@ -5,7 +5,8 @@ name: CI, free compatibility and packages
 # commit), runs both together in WordPress Playground and builds both ZIPs.
 #
 # Pro is paid: keep this repository PRIVATE so only people with access (the
-# owner/admins) can download its artifacts. Artifacts expire after 7 days.
+# owner/admins) can download its artifacts. Anyone with read access can download
+# artifacts, so grant access to admins only. Artifacts expire after 7 days.
 
 on:
   push:

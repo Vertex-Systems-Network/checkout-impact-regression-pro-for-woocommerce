@@ -26,7 +26,7 @@ Both repositories run the same checks against each other on every push, pull req
 
 1. `tests/free-api-contract.php` – fails if the free plugin no longer provides something Pro uses (or Pro starts using something new).
 2. `tests/integration/run.sh` – installs the latest WordPress + WooCommerce in WordPress Playground, activates free + Pro and checks REST routes, export, alerts, permissions and that Pro cannot run without free.
-3. This (private) repository's CI builds **both** ZIPs into one **plugin-packages** artifact that expires after 7 days. Only people with access to this repository – the owner/admins – can download it. The public free repository never builds or uploads Pro files; it tests Pro inside the job using the read-only `PRO_REPO_TOKEN` secret.
+3. This (private) repository's CI builds **both** ZIPs into one **plugin-packages** artifact that expires after 7 days. GitHub lets anyone with read access to a repository download its artifacts, so **give access to this repository only to the owner/admins** – no read-only collaborators, outside collaborators or broad team grants. The public free repository never builds or uploads Pro files; it tests Pro inside the job using the read-only `PRO_REPO_TOKEN` secret.
 
 If both repositories have a branch with the same name, CI tests those branches together – use that for changes that touch both plugins. **Keep this repository private.** While it is public, CI still builds and checks the Pro ZIP but does not upload it.
 
